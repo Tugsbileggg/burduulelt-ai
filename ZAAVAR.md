@@ -10,7 +10,7 @@
 
 ## Суулгах (5 минут)
 
-1. **[minii-medeelel-ai.zip татах](https://github.com/Tugs11/emongolia-burduulelt/releases/latest/download/minii-medeelel-ai.zip)**
+1. **[minii-medeelel-ai.zip татах](https://github.com/Tugsbileggg/burduulelt-ai/releases/latest/download/minii-medeelel-ai.zip)**
 2. Татагдсан ZIP дээр баруун товч дараад **Extract All** (Задлах) сонгоно.
 3. Chrome-ийн хаягийн мөрөнд `chrome://extensions` гэж бичээд Enter дарна.
 4. Баруун дээд буланд байгаа **Developer mode**-ыг асаана.

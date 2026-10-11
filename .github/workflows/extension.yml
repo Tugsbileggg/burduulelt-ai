@@ -1,6 +1,6 @@
 # extension/ өөрчлөгдөх бүрт ZIP болгож «extension-latest» release-д байршуулна.
 # Татах холбоос (README, ZAAVAR, танилцуулгын «Extension татах» товч):
-#   https://github.com/Tugs11/emongolia-burduulelt/releases/latest/download/minii-medeelel-ai.zip
+#   https://github.com/Tugsbileggg/burduulelt-ai/releases/latest/download/minii-medeelel-ai.zip
 name: Extension ZIP
 
 on:

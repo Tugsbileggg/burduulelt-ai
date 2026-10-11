@@ -16,11 +16,13 @@
 
 Хэрэглэгч ямар нэг тохиргоо, API key оруулахгүй. AI-г төслийн сервис ([worker/](worker/)) дуудна.
 
+> 2026-10-11-нд төслийг [Tugs11/emongolia-burduulelt](https://github.com/Tugs11/emongolia-burduulelt)-ээс энэ repo руу бүх commit-той нь шилжүүлж, цаашид энд хөгжүүлнэ.
+
 > Өмнө нь энэ repo-д хоёр тусдаа extension байсан: «Бүрдүүлэлт AI» (`extension/`, жагсаалтаар PDF татах) ба «Миний мэдээлэл AI» (`minii-medeelel/extension/`). 2026-10-08-нд хоёуланг нь нэг extension болгож `extension/`-д нэгтгэсэн. Хоёр AI сервисийг мөн `worker/`-д нэгтгэсэн. `minii-medeelel/` хавтас repo-оос хасагдсан. Өмнө нь `minii-medeelel/extension`-ийг суулгасан бол `chrome://extensions` дээрээс **Remove** хийгээд доорх ZIP-ийг суулгана.
 
 ## Татаж суулгах
 
-**[⬇ minii-medeelel-ai.zip татах](https://github.com/Tugs11/emongolia-burduulelt/releases/latest/download/minii-medeelel-ai.zip)**
+**[⬇ minii-medeelel-ai.zip татах](https://github.com/Tugsbileggg/burduulelt-ai/releases/latest/download/minii-medeelel-ai.zip)**
 
 1. ZIP-ийг задална (Windows: баруун товч → **Extract All**).
 2. Chrome-ийн хаягийн мөрөнд `chrome://extensions` гэж бичээд баруун дээд буланд байгаа **Developer mode**-ыг асаана.
