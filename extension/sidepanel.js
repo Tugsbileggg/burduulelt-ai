@@ -5,79 +5,133 @@ import { SERVICE_URL } from "./config.js";
 import { makeZip, dataUrlBytes } from "./zip.js";
 
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const today = () => new Date().toISOString().slice(0, 10);
-const show = (id, on = true) => $(id).classList.toggle("hidden", !on);
-const status = (text, cls = "muted") => { $("status").className = `small ${cls}`; $("status").textContent = text; };
-const listStatus = (text, cls = "muted") => { $("listStatus").className = `small ${cls}`; $("listStatus").textContent = text; };
+const EM_HOME = "https://e-mongolia.mn/home";
 
+// --- Дүрс (stroke SVG) ----------------------------------------------------------
+const ICONS = {
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  refresh: '<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/>',
+  loader: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+  alert: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  chevron: '<path d="m9 18 6-6-6-6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  exclaim: '<path d="M12 8v5"/><path d="M12 17h.01"/>',
+  loan: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  health: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  social: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  id: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h10"/>',
+  book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
+  property: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  car: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+  arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  package: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  bulb: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>',
+};
+ICONS.shield = ICONS.social;
+
+function icon(name, size = 18, { sw = 2, cls = "" } = {}) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${cls ? ` class="${cls}"` : ""}>${ICONS[name] || ICONS.file}</svg>`;
+}
+const spinner = (size = 18) => icon("loader", size, { cls: "spin" });
+
+function timeAgo(iso, now = Date.now()) {
+  const sec = Math.max(0, (now - new Date(iso).getTime()) / 1000);
+  if (sec < 60) return "дөнгөж сая";
+  if (sec < 3600) return `${Math.floor(sec / 60)} минутын өмнө`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} цагийн өмнө`;
+  return `${Math.floor(sec / 86400)} өдрийн өмнө`;
+}
+
+// --- Тогтмол текстүүд -------------------------------------------------------------
+// Санал болгох асуултууд: [chip дээрх товч нэр, илгээх асуулт]
 const SUGGESTIONS = [
-  "Солонгос руу жуулчны виз мэдүүлэх бичиг баримт бүрдүүлэх",
-  "Орон сууцны ипотекийн зээл авахад бүрдүүлэх бичиг баримт",
-  "Шинэ ажилд ороход өгөх материал бүрдүүлэх",
-  "Хүүхдээ сургуульд бүртгүүлэх материал",
-  "Миний цэргийн алба хаасан мэдээлэл хэр байна?",
-  "НДШ хэдэн сар төлөгдсөн бэ?",
-  "Зээлийн үлдэгдэл хэд вэ?",
-  "Паспорт хэзээ дуусах вэ?",
+  ["Солонгос виз", "Солонгос руу жуулчны виз мэдүүлэх бичиг баримт бүрдүүлэх"],
+  ["Ипотекийн зээл", "Орон сууцны ипотекийн зээл авахад бүрдүүлэх бичиг баримт"],
+  ["Шинэ ажилд орох", "Шинэ ажилд ороход өгөх материал бүрдүүлэх"],
+  ["Сургуульд бүртгүүлэх", "Хүүхдээ сургуульд бүртгүүлэх материал"],
+  ["НДШ хэдэн сар?", "НДШ хэдэн сар төлөгдсөн бэ?"],
+  ["Зээлийн үлдэгдэл", "Зээлийн үлдэгдэл хэд вэ?"],
+  ["Паспорт хэзээ дуусах?", "Паспорт хэзээ дуусах вэ?"],
+  ["Цэргийн алба", "Миний цэргийн алба хаасан мэдээлэл хэр байна?"],
+];
+
+const FETCH_ITEMS = [
+  ["health", "Эрүүл мэндийн даатгал"],
+  ["social", "Нийгмийн даатгалын шимтгэл (НДШ)"],
+  ["loan", "Зээл, төлөгдөөгүй нэхэмжлэх"],
+  ["car", "Тээврийн хэрэгсэл, торгууль, оношилгоо, даатгал"],
+  ["id", "Иргэний үнэмлэх, гадаад паспорт"],
+  ["property", "Үл хөдлөх хөрөнгө"],
+];
+
+const SOURCE_ICON = {
+  health: "health", social: "social", invoice: "receipt", loan: "loan", vehicles: "car", penalty: "alert",
+  inspection: "wrench", mandatory: "shield", idcard: "id", passport: "book", property: "property",
+};
+
+// Эхний 3 нь анх нээх дэлгэцэд, бүгд «Нууцлал» цонхонд харагдана
+const PRIVACY_POINTS = [
+  "e-Mongolia-д ДАН-аар өөрөө нэвтэрнэ. Нууц үг, ДАН код extension-д орохгүй.",
+  "AI руу илгээхээс өмнө РД, нэр, хаяг, утас зэргийг хасна. Юу илгээгдсэнийг «Татсан мэдээлэл» хэсгээс харж болно.",
+  "Хураангуй, асуулт хариулт, жагсаалт зөвхөн энэ компьютерт хадгалагдана. Хүссэн үедээ устгах боломжтой.",
+  "Нууцалсан мэдээллийг төслийн AI сервис (Google Gemini эсвэл Anthropic Claude) хураангуйлна. Сервис ирсэн мэдээллийг хадгалахгүй, log бичихгүй.",
+  "Жагсаалтаар бүрдүүлэхэд AI руу зөвхөн жагсаалт (текст эсвэл зураг) очно. PDF-ийн агуулга AI руу очихгүй.",
+  "Extension «Илгээх», «Төлөх» товчийг хэзээ ч дарахгүй. Төлбөртэй үйлчилгээг автоматаар эхлүүлэхгүй.",
 ];
 
 // Өмнөх хувилбаруудын тохиргоо (хэрэглэгчийн Gemini/Claude key, Worker URL гэх мэт) хэрэггүй болсон тул устгана
 await chrome.storage.local.remove(["provider", "geminiKey", "apiKey", "worker", "appToken", "onRepeat"]);
 
-// Side panel хаагдахад тасарсан «татаж байна» төлөвийг буцаана
+// --- Төлөв ------------------------------------------------------------------------
+// Side panel хаагдахад тасарсан «татаж байна», «жагсаалт гаргаж байна» төлөвийг буцаана
 const restore = plan => {
-  if (plan?.em) { plan.running = false; plan.em.forEach(d => { if (d.state === "run") d.state = "idle"; }); }
+  if (plan?.em) { plan.running = false; plan.regenerating = false; plan.em.forEach(d => { if (d.state === "run") d.state = "idle"; }); }
+  if (plan?.loading) { delete plan.loading; plan.error = "Жагсаалт гаргаж байх үед side panel хаагдсан. Дахин асууна уу."; }
   return plan;
 };
-let state = (await chrome.storage.local.get("last")).last || null; // { snap, prevTakenAt, changes, summary }
+const saved = await chrome.storage.local.get(["last", "chat", "listPlan", "tab", "docRef"]);
+let state = saved.last || null; // { snap, prevTakenAt, changes, summary }
 // [{ role: "user" | "assistant", text, links?, plan? }] — энэ компьютерт хадгална, шинээр «Шинжлэх» дарахад цэвэрлэнэ
-let chat = ((await chrome.storage.local.get("chat")).chat || []).map(m => (restore(m.plan), m));
-// «Жагсаалтаар бүрдүүлэх» табын жагсаалт (chat-ийн plan-тай ижил хэлбэртэй, source: "list")
-let listPlan = restore((await chrome.storage.local.get("listPlan")).listPlan || null);
+let chat = (saved.chat || []).map(m => (restore(m.plan), m));
+// «Жагсаалтаар бүрдүүлэх»-ийн жагсаалт (chat-ийн plan-тай ижил хэлбэртэй, source: "list")
+let listPlan = restore(saved.listPlan || null);
 
-// Таб: «Миний мэдээлэл» (шинжлэх, chat) ба «Жагсаалтаар бүрдүүлэх». Сүүлд нээснийг санана.
-function showTab(name) {
-  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
-  show("tab-info", name === "info");
-  show("tab-list", name === "list");
-  chrome.storage.local.set({ tab: name }).catch(() => {});
-}
-document.querySelectorAll(".tabs button").forEach(b => (b.onclick = () => showTab(b.dataset.tab)));
-showTab((await chrome.storage.local.get("tab")).tab === "list" ? "list" : "info");
-
-$("openEm").onclick = $("openEm2").onclick = () => chrome.tabs.create({ url: "https://e-mongolia.mn/home" });
-
-// «Дахин эхлүүлэх» (Миний мэдээлэл): хураангуй, асуулт хариулт, бичиг баримтын жагсаалтыг цэвэрлэнэ.
-// Сар бүрийн агшинг (snapshots) үлдээнэ — дараа сард өөрчлөлтийг харьцуулахад хэрэгтэй, интерфэйсэд харагддаггүй.
-$("reset").onclick = async () => {
-  if (!confirm("Хураангуй, асуулт хариулт, бичиг баримтын жагсаалтыг цэвэрлээд шинээр эхлэх үү?")) return;
-  state = null;
-  chat = [];
-  await chrome.storage.local.remove(["last", "chat"]);
-  $("question").value = "";
-  $("summary").innerHTML = "";
-  status("");
-  renderChat(); // хуучин мессежийг арилгаж, санал болгох асуултуудыг сэргээнэ
-  render();
+const ui = {
+  // «Тойм» (хураангуй, chat) ба «Бичиг баримт» (жагсаалт, цуглуулах). Сүүлд нээснийг санана (өмнөх хувилбарын "list" → documents).
+  tab: ["documents", "list"].includes(saved.tab) ? "documents" : "overview",
+  docRef: saved.docRef ?? null, // «Бичиг баримт» табд харагдах жагсаалт: chat-ийн мессежийн дугаар эсвэл "list"
+  analyzing: false,
+  asking: false,
+  parsing: false,
+  status: null,      // { text, cls } — шинжлэх явц, алдаа
+  needsLogin: false, // «e-Mongolia нээх» товч харуулах
+  listStatus: null,  // { text, cls } — жагсаалт задлах явц, алдаа
+  listForm: false,   // жагсаалт байхад «Жагсаалтаар бүрдүүлэх» маягтыг нээсэн эсэх
+  started: false,    // анх нээх дэлгэцээс «Жагсаалтаар бүрдүүлэх» дарсан
+  menu: null,        // "overview" | "doc"
+  open: new Set(),   // нээлттэй <details> (дахин зурахад хадгална)
 };
 
-// «Дахин эхлүүлэх» (Жагсаалтаар бүрдүүлэх): оруулсан жагсаалт, зураг, цуглуулалтын төлөвийг цэвэрлэнэ
-$("reset2").onclick = async () => {
-  if (!confirm("Жагсаалт болон цуглуулалтын төлөвийг цэвэрлээд шинээр эхлэх үү?")) return;
-  listPlan = null;
-  $("list").value = "";
-  $("img").value = "";
-  listStatus("");
-  await chrome.storage.local.remove("listPlan");
-  renderList();
-};
-
-// e-Mongolia-оос мэдээлэл татах явц (content.js-ээс)
-chrome.runtime.onMessage.addListener(msg => {
-  if (msg.type === "PROGRESS") status(`e-Mongolia-оос мэдээлэл татаж байна… (${msg.done + 1}/${msg.total}) ${msg.name}`);
-});
-
+// --- AI сервис ----------------------------------------------------------------------
 async function service(path, payload) {
   const r = await fetch(SERVICE_URL + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
   if (!r.ok) throw new Error(await r.text());
@@ -128,18 +182,26 @@ const DOC_REQUEST = new RegExp([
 ].join("|"));
 const isDocRequest = s => DOC_REQUEST.test(latin(s));
 
-// «Шинжлэх»: мэдээлэл татах → нууцалж хадгалах → AI хураангуй
-$("analyze").onclick = async () => {
-  $("analyze").disabled = true;
-  $("reset").disabled = true;
-  show("openEm", false);
+// --- «Шинжлэх»: мэдээлэл татах → нууцалж хадгалах → AI хураангуй -------------------------
+const setStatus = (text, cls = "muted") => { ui.status = text ? { text, cls } : null; render(); };
+
+// e-Mongolia-оос мэдээлэл татах явц (content.js-ээс)
+chrome.runtime.onMessage.addListener(msg => {
+  if (msg.type === "PROGRESS" && ui.analyzing) setStatus(`e-Mongolia-оос мэдээлэл татаж байна… (${msg.done + 1}/${msg.total}) ${msg.name}`);
+});
+
+async function runAnalyze() {
+  if (ui.analyzing) return;
+  ui.analyzing = true;
+  ui.needsLogin = false;
+  ui.menu = null;
+  setStatus("e-Mongolia-оос мэдээлэл татаж байна…");
   try {
     const [tab] = await chrome.tabs.query({ url: "https://e-mongolia.mn/*" });
-    if (!tab) { show("openEm"); throw new Error("e-Mongolia нээлттэй алга. «e-Mongolia нээх» дарж нэвтрээд дахин «Шинжлэх» дарна уу."); }
-    status("e-Mongolia-оос мэдээлэл татаж байна…");
+    if (!tab) { ui.needsLogin = true; throw new Error("e-Mongolia нээлттэй алга. «e-Mongolia нээх» дарж нэвтрээд дахин «Шинжлэх» дарна уу."); }
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
     const res = await chrome.tabs.sendMessage(tab.id, { type: "COLLECT", sources: buildSources() });
-    if (res?.error === "NOT_LOGGED_IN") { show("openEm"); throw new Error("e-Mongolia-д нэвтрээгүй байна (эсвэл session дууссан). Нэвтрээд дахин «Шинжлэх» дарна уу."); }
+    if (res?.error === "NOT_LOGGED_IN") { ui.needsLogin = true; throw new Error("e-Mongolia-д нэвтрээгүй байна (эсвэл session дууссан). Нэвтрээд дахин «Шинжлэх» дарна уу."); }
 
     const snap = { takenAt: new Date().toISOString(), data: {}, status: {} };
     for (const s of SOURCES) {
@@ -155,20 +217,20 @@ $("analyze").onclick = async () => {
     const prev = previousSnapshot(all, snap);
     state = { snap, prevTakenAt: prev?.takenAt || null, changes: prev ? diff(prev, snap, SOURCES) : null, summary: null };
     chat = [];
+    ui.tab = "overview";
     await chrome.storage.local.set({ snapshots: all, last: state });
-    render();
 
-    status("AI хураангуйлж байна… (10–40 секунд)");
+    setStatus("AI хураангуйлж байна… (10–40 секунд)");
     state.summary = { ...(await service("/summarize", aiPayload())), at: new Date().toISOString() };
     await chrome.storage.local.set({ last: state });
-    status(`Шинжилсэн: ${state.summary.at.slice(0, 16).replace("T", " ")}`);
+    ui.status = null;
+    toast("Шинжилгээ бэлэн боллоо");
   } catch (e) {
-    status(e.message, "err");
+    ui.status = { text: e.message, cls: "err" };
   }
-  $("analyze").disabled = false;
-  $("reset").disabled = false;
+  ui.analyzing = false;
   render();
-};
+}
 
 // AI руу илгээх мэдээлэл (нууцалсан): эх сурвалж бүрийн өгөгдөл, татагдаагүй эх сурвалжууд, өмнөх сартай харьцуулсан ялгаа
 function aiPayload() {
@@ -182,59 +244,75 @@ function aiPayload() {
   };
 }
 
-// Chatbot: татсан мэдээлэл + хураангуй + асуултад тохирох e-Mongolia үйлчилгээнүүдийг илгээнэ
+// «Дахин эхлүүлэх»: хураангуй, асуулт хариулт, chat-ийн жагсаалтуудыг цэвэрлэнэ.
+// Сар бүрийн агшинг (snapshots) үлдээнэ — дараа сард өөрчлөлтийг харьцуулахад хэрэгтэй, интерфэйсэд харагддаггүй.
+async function resetInfo() {
+  ui.menu = null;
+  if (!confirm("Хураангуй, асуулт хариулт, бичиг баримтын жагсаалтыг цэвэрлээд шинээр эхлэх үү?")) return render();
+  state = null;
+  chat = [];
+  Object.assign(ui, { status: null, needsLogin: false, tab: "overview" });
+  await chrome.storage.local.remove(["last", "chat"]);
+  $("askInput").value = "";
+  render();
+}
+
+// --- Chatbot: татсан мэдээлэл + хураангуй + асуултад тохирох e-Mongolia үйлчилгээнүүдийг илгээнэ ---
 async function ask(question) {
   question = question.trim();
-  if (!question || !state?.snap) return;
-  $("question").value = "";
+  if (!question || !state?.snap || ui.asking) return;
+  $("askInput").value = "";
   chat.push({ role: "user", text: question });
   chat.push({ role: "assistant", text: "…", pending: true });
-  $("send").disabled = true;
-  renderChat();
+  ui.asking = true;
+  render();
+  scrollToBottom();
   try {
     if (isDocRequest(question)) {
       // Тогтмол хэлбэр: гарчиг → e-Mongolia-оос цуглуулах → «Цуглуулах» → өөрөө бэлдэх
       const msg = { role: "assistant", text: "Бичиг баримтын жагсаалтыг бэлдлээ. e-Mongolia-оос авах лавлагаануудыг «Цуглуулах» дарж нэг ZIP болгон татна.", links: [], plan: { loading: true } };
       chat[chat.length - 1] = msg;
-      renderChat();
+      render();
       await makePlan(msg, question.slice(0, 300), question);
-      $("send").disabled = false;
-      return renderChat();
+    } else {
+      const services = await findServices(question);
+      const { sources, unavailable } = aiPayload();
+      const r = await service("/chat", {
+        today: today(),
+        question,
+        history: chat.filter(m => !m.pending).slice(-7, -1).map(({ role, text }) => ({ role, text })),
+        data: { sources, unavailable },
+        summary: state.summary ? { headline: state.summary.headline, alerts: state.summary.alerts } : null,
+        services: services.map(s => s.title),
+      });
+      // AI зөвхөн бидний өгсөн нэрсээс сонгоно; холбоосыг энд (AI биш) үүсгэнэ
+      const links = (r.services || []).map(t => services.find(s => s.title === t)).filter(Boolean);
+      const msg = { role: "assistant", text: r.answer, links };
+      chat[chat.length - 1] = msg;
+      if (r.intent === "documents" && r.purpose) { msg.plan = { loading: true }; render(); await makePlan(msg, r.purpose, question); }
     }
-    const services = await findServices(question);
-    const { sources, unavailable } = aiPayload();
-    const r = await service("/chat", {
-      today: today(),
-      question,
-      history: chat.filter(m => !m.pending).slice(-7, -1).map(({ role, text }) => ({ role, text })),
-      data: { sources, unavailable },
-      summary: state.summary ? { headline: state.summary.headline, alerts: state.summary.alerts } : null,
-      services: services.map(s => s.title),
-    });
-    // AI зөвхөн бидний өгсөн нэрсээс сонгоно; холбоосыг энд (AI биш) үүсгэнэ
-    const links = (r.services || []).map(t => services.find(s => s.title === t)).filter(Boolean);
-    const msg = { role: "assistant", text: r.answer, links };
-    chat[chat.length - 1] = msg;
-    if (r.intent === "documents" && r.purpose) { msg.plan = { loading: true }; renderChat(); await makePlan(msg, r.purpose, question); }
   } catch (e) {
     chat[chat.length - 1] = { role: "assistant", text: "Алдаа: " + e.message, error: true };
   }
-  $("send").disabled = false;
-  renderChat();
+  ui.asking = false;
+  render();
+  scrollToBottom();
 }
 
 // --- Бичиг баримт бүрдүүлэх ---------------------------------------------------
-// Хоёр замаар жагсаалт гарна: chat-д зорилгоо бичих (/plan) эсвэл «Жагсаалтаар» табд байгууллагын жагсаалтаа оруулах (/parse).
+// Хоёр замаар жагсаалт гарна: chat-д зорилгоо бичих (/plan) эсвэл «Жагсаалтаар бүрдүүлэх»-д байгууллагын жагсаалтаа оруулах (/parse).
 // Аль алинд нь e-Mongolia-оос авах зүйлсийг каталогтой тааруулж, «Цуглуулах» дарахад PDF-ээр татаад нэг ZIP болгоно.
 async function makePlan(msg, purpose, question, fresh = false) {
   try {
     const payload = { today: today(), purpose, question, emongoliaServices: await referenceTitles() };
     const p = await cachedService("plan:" + requestKey(question), "/plan", payload, fresh);
-    msg.plan = { ...(await buildPlan({ ...p, title: p.title || purpose })), purpose, question };
+    msg.plan = { ...(await buildPlan({ ...p, title: p.title || purpose })), purpose, question, at: Date.now() };
+    const i = chat.indexOf(msg);
+    if (i >= 0) ui.docRef = String(i); // шинэ жагсаалтыг «Бичиг баримт» табд харуулна
   } catch (e) {
     msg.plan = { error: "Жагсаалт гаргаж чадсангүй: " + e.message };
   }
-  renderChat();
+  render();
 }
 
 // AI-ийн (эсвэл түлхүүр үгийн) мөрүүдийг e-Mongolia-ийн бодит үйлчилгээтэй тааруулна:
@@ -270,12 +348,14 @@ async function choose(d, c) {
   Object.assign(d, { match: c, state: "idle", choosing: false, url: null, detail: null });
 }
 
+// Мөрийн төлөв: [тэмдгийн өнгө, товч нэр, тайлбар]
 const DOC_STATUS = {
-  idle: ["muted", ""], run: ["warn", "татаж байна…"], done: ["ok", "✓ татагдсан"],
-  NOT_LOGGED_IN: ["err", "e-Mongolia-д нэвтрээгүй байна — нэвтрээд «Цуглуулах»-ыг дахин дарна уу"],
-  NOT_REGISTERED: ["muted", "таны нэр дээр бүртгэл алга"],
-  PAID: ["warn", "төлбөртэй — өөрөө шийднэ"], NOT_INSTANT: ["warn", "шууд гардаггүй — өөрөө хүсэлт гаргана"],
-  NEEDS_INPUT: ["warn", "маягтыг өөрөө бөглөнө"],
+  idle: ["unknown", "Татаагүй"], run: ["loading", "Татаж байна"], done: ["ok", "Бэлэн"],
+  NOT_LOGGED_IN: ["overdue", "Нэвтрээгүй", "e-Mongolia-д нэвтрээгүй байна — нэвтрээд «Цуглуулах»-ыг дахин дарна уу"],
+  NOT_REGISTERED: ["unknown", "Бүртгэл алга", "Таны нэр дээр бүртгэл алга"],
+  PAID: ["attention", "Төлбөртэй", "Төлбөртэй — «Хуудсыг нээх» дараад өөрөө шийднэ"],
+  NOT_INSTANT: ["attention", "Шууд гардаггүй", "Шууд гардаггүй — өөрөө хүсэлт гаргана"],
+  NEEDS_INPUT: ["attention", "Маягттай", "Маягтыг өөрөө бөглөнө"],
 };
 // Бүртгэл байхгүй үед авах өөр лавлагаа (2026-10-08 туршилт: гэрлээгүй хүнд «Гэрлэсний бүртгэлийн лавлагаа» гардаггүй)
 const ALTERNATIVES = [[/гэрлэсний бүртгэлийн лавлагаа/i, t => t.replace(/бүртгэлийн/i, "бүртгэлгүй")]];
@@ -283,12 +363,30 @@ const ALTERNATIVES = [[/гэрлэсний бүртгэлийн лавлагаа
 // Татсан PDF-үүд (зөвхөн санах ойд — side panel хаахад устна, ZIP багц Downloads-д үлдэнэ)
 const pdfs = new WeakMap(); // d → data URL
 const safe = s => String(s).replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "_").slice(0, 60);
-// Жагсаалт chat-ийн мессеж дотор (data-m = мессежийн дугаар) эсвэл «Жагсаалтаар» табд (data-m = "list") байна
-const planOf = m => (m === "list" ? listPlan : chat[+m]?.plan);
-const rerender = plan => (plan === listPlan ? renderList() : renderChat());
+
+// Жагсаалтууд: chat-д гарсан (ref = мессежийн дугаар) ба «Жагсаалтаар бүрдүүлэх»-ээс (ref = "list"), шинэ нь эхэндээ
+const planOf = ref => (ref === "list" ? listPlan : chat[+ref]?.plan);
+const isReady = p => !!p?.em && !p.loading && !p.error;
+function plans() {
+  const all = chat.map((m, i) => ({ ref: String(i), plan: m.plan }));
+  if (listPlan) all.push({ ref: "list", plan: listPlan });
+  return all.filter(x => isReady(x.plan)).sort((a, b) => (b.plan.at || 0) - (a.plan.at || 0));
+}
+const activeDoc = () => { const all = plans(); return all.find(x => x.ref === ui.docRef) || all[0] || null; };
+
+// Бэлэн болсон тоо: e-Mongolia-оос (хасаагүй мөр) + өөрөө бэлдэх
+function progress(plan) {
+  const need = plan.em.filter(d => !d.skip);
+  const emDone = need.filter(d => d.state === "done").length;
+  const selfDone = plan.self.filter(x => x.done).length;
+  return {
+    ready: emDone + selfDone, total: need.length + plan.self.length, emDone, emNeed: need.length, selfDone,
+    collectable: need.filter(d => d.match && d.state !== "done").length,
+  };
+}
 
 async function collectOne(plan, d, i) {
-  d.state = "run"; rerender(plan);
+  d.state = "run"; render();
   const item = { ...d.match, fill: { years: d.years, addressee: plan.addressee, addresseeForeign: plan.addresseeForeign, subject: d.subject, language: plan.language } };
   const r = await chrome.runtime.sendMessage({ type: "COLLECT_DOC", item, index: i, folder: plan.folder });
   Object.assign(d, { state: r?.ok ? "done" : r?.error || "алдаа", detail: r?.detail, downloadId: r?.downloadId, url: r?.url });
@@ -307,7 +405,8 @@ async function downloadBundle(plan) {
   const id = await chrome.downloads.download({ url, filename: `Burduulelt/${name}`, conflictAction: "uniquify", saveAs: false });
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
   plan.bundle = { id, name, count: files.length - 1 };
-  rerender(plan);
+  plan.bundleError = null;
+  render();
 }
 
 function openPdf(d) {
@@ -316,7 +415,8 @@ function openPdf(d) {
 }
 
 async function collectPlan(plan) {
-  plan.running = true; rerender(plan);
+  if (plan.running) return;
+  plan.running = true; render();
   for (const [i, d] of plan.em.entries()) {
     if (d.state === "done" || d.skip || !d.match) continue;
     const r = await collectOne(plan, d, i);
@@ -326,11 +426,11 @@ async function collectPlan(plan) {
       const m = await matchService(alt[1](d.match.title));
       if (m) { d.replaced = d.match.title; d.match = m; await collectOne(plan, d, i); }
     }
-    rerender(plan);
+    render();
   }
   plan.running = false;
   await downloadBundle(plan).catch(e => { plan.bundleError = "Багц үүсгэж чадсангүй: " + e.message; });
-  rerender(plan);
+  render();
 }
 
 // Жагсаалтыг энгийн текстээр (хуулж бусдад илгээх, хэвлэхэд)
@@ -343,115 +443,45 @@ function planText(plan) {
 
 const norm = s => String(s).toLowerCase().replace(/\s+/g, " ").trim();
 
-// Нэг бичиг баримтын мөр. Тааруулалт эргэлзээтэй (match алга) эсвэл хэрэглэгч «Өөр» дарсан бол сонголтуудыг харуулна.
-function docHtml(plan, d, i, mi) {
-  const at = `data-m="${mi}" data-i="${i}"`;
-  const lock = plan.running || d.state === "done";
-  const choices = (!d.match || d.choosing) && !plan.running ? `<div class="choose">
-      ${d.candidates?.length ? "" : `<span class="small muted">олдсонгүй — өөр үгээр хайна уу</span>`}
-      ${(d.candidates || []).map((c, k) => `<button type="button" class="ghost" data-act="pick" ${at} data-c="${k}">${esc(c.title)}</button>`).join("")}
-      <input data-act="search" ${at} value="${esc(d.query || "")}" placeholder="өөр үгээр хайх (Enter)">
-      <button type="button" class="ghost muted" data-act="none" ${at}>Аль нь ч биш — өөрөө бэлдэнэ</button>
-      ${d.match ? `<button type="button" class="ghost muted" data-act="keep" ${at}>Болих</button>` : ""}
-    </div>` : "";
-  if (!d.match) return `<div class="doc"><b>${esc(d.label)}</b> <span class="warn">— e-Mongolia-д аль нь вэ? Сонголтыг тань санана.</span></div>${choices}`;
-  const [cls, txt] = DOC_STATUS[d.state] || ["err", d.state];
-  const yrs = d.years ? ` <span class="muted small">(${new Date().getFullYear() - d.years}–${new Date().getFullYear()})</span>` : "";
-  return `<label class="doc"><input type="checkbox" data-act="skip" ${at} ${d.skip ? "" : "checked"} ${lock ? "disabled" : ""}>
-      <span${d.skip ? ' class="muted" style="text-decoration:line-through"' : ""}>${esc(d.match.title)}</span>${yrs}
-      <span class="${cls}">${esc(txt)}${d.detail ? ` (${esc(d.detail)})` : ""}</span>
-      ${plan.source === "list" && norm(d.label) !== norm(d.match.title) ?`<span class="small muted">← ${esc(d.label)}</span>` : ""}
-      ${d.replaced ? `<span class="small muted">«${esc(d.replaced)}» бүртгэлгүй тул орлуулав</span>` : ""}
-      ${d.state === "done" && pdfs.has(d) ? `<button type="button" class="ghost mini" data-act="open" ${at}>Нээх</button>` : ""}
-      ${d.url && d.state !== "done" ? `<button type="button" class="ghost mini" data-act="page" ${at}>Хуудсыг нээх</button>` : ""}
-      ${!lock && !d.choosing ? `<button type="button" class="ghost mini" data-act="alt" ${at}>Өөр</button>` : ""}</label>${choices}`;
+// «Шинээр гаргах»: хадгалсан жагсаалтын оронд AI-аас шинээр гаргана
+async function regenerate(ref) {
+  const plan = planOf(ref);
+  if (!plan || plan.running) return;
+  if (!confirm("Шинээр гаргавал одоогийн тэмдэглэгээ арилна. Үргэлжлүүлэх үү?")) return;
+  if (ref === "list") return parseList(true);
+  const msg = chat[+ref];
+  plan.regenerating = true; render();
+  await makePlan(msg, plan.purpose, plan.question, true);
+  // Шинээр гаргаж чадаагүй бол хуучин жагсаалт хэвээр үлдэнэ
+  if (msg.plan.error) { toast(msg.plan.error); plan.regenerating = false; msg.plan = plan; render(); }
 }
 
-function planHtml(plan, mi) {
-  if (plan.loading) return `<div class="small muted" style="margin-top:6px">Бичиг баримтын жагсаалт гаргаж байна…</div>`;
-  if (plan.error) return `<div class="small err" style="margin-top:6px">${esc(plan.error)}</div>`;
-  const todo = plan.em.filter(d => d.match && !d.skip), done = todo.filter(d => d.state === "done");
-  const selfDone = plan.self.filter(x => x.done).length;
-  return `<div class="plan">
-    <div style="font-weight:600;margin:8px 0 4px">${esc(plan.title)}</div>
-    <div class="small muted">e-Mongolia-оос цуглуулах (${done.length}/${todo.length})${plan.addressee ? ` · «Хаана зориулж»: ${esc(plan.addressee)}` : ""}:</div>
-    ${plan.em.some(isForeign) ? `<div class="small muted" style="margin:4px 0">Гадаад хэлээр лавлагааны хэл:
-      <select data-act="lang" data-m="${mi}" ${plan.running ? "disabled" : ""}>${LANGUAGES.map(l => `<option value="${l}" ${l === (plan.language || "англи") ? "selected" : ""}>${l[0].toUpperCase() + l.slice(1)}</option>`).join("")}</select>
-      <span>(e-Mongolia-д байхгүй бол англи)</span></div>` : ""}
-    ${plan.em.map((d, i) => docHtml(plan, d, i, mi)).join("")}
-    <div class="row" style="margin-top:6px">
-      ${todo.length && done.length < todo.length ? `<button type="button" class="mini" data-act="collect" data-m="${mi}" ${plan.running ? "disabled" : ""}>${plan.running ? "Цуглуулж байна…" : `Цуглуулах (${todo.length - done.length})`}</button>` : ""}
-      <button type="button" class="ghost mini" data-act="copy" data-m="${mi}">Жагсаалт хуулах</button>
-      ${(plan.question || plan.text) && !plan.running ? `<button type="button" class="ghost mini" data-act="regen" data-m="${mi}" title="Хадгалсан жагсаалтын оронд AI-аас шинээр гаргана">Шинээр гаргах</button>` : ""}
-    </div>
-    ${plan.bundle ? `<div class="bundle">📦 <b>${esc(plan.bundle.name)}</b><div class="small muted">${plan.bundle.count} PDF + Жагсаалт.txt · Downloads/Burduulelt</div>
-      <button type="button" class="ghost mini" data-act="folder" data-m="${mi}">Хавтас нээх</button>
-      ${plan.em.some(d => pdfs.has(d)) ? `<button type="button" class="ghost mini" data-act="rezip" data-m="${mi}">Багцыг дахин татах</button>` : ""}</div>` : ""}
-    ${plan.bundleError ? `<div class="small err">${esc(plan.bundleError)}</div>` : ""}
-    ${plan.self.length ? `<div class="small muted" style="margin-top:8px">Өөрөө бэлдэх (${selfDone}/${plan.self.length}):</div>` + plan.self.map((x, i) =>
-      `<label class="doc"><input type="checkbox" data-act="tick" data-m="${mi}" data-i="${i}" ${x.done ? "checked" : ""}>
-        <b${x.done ? ' class="muted" style="text-decoration:line-through"' : ""}>${esc(x.label)}</b>${x.note ? ` <span class="muted">— ${esc(x.note)}</span>` : ""}</label>`).join("") : ""}
-    ${plan.tips.length ? `<div class="small muted" style="margin-top:8px">Зөвлөмж:</div>` + plan.tips.map(t => `<div class="small">• ${esc(t)}</div>`).join("") : ""}
-    <div class="small warn" style="margin-top:8px">Шаардлага байгууллага бүрт өөр байж болно. Хүлээн авах байгууллагаас (банк, элчин сайдын яам, ажил олгогч, сургууль…) заавал шалгана уу.</div>
-  </div>`;
+async function deleteList(ref) {
+  const plan = planOf(ref);
+  if (!plan || plan.running || !confirm(`«${plan.title}» жагсаалтыг устгах уу?`)) return;
+  if (ref === "list") {
+    listPlan = null;
+    $("listText").value = "";
+    $("listImg").value = "";
+    showImgName();
+    ui.listStatus = null;
+  } else chat[+ref].plan = { error: "Жагсаалтыг устгасан." };
+  ui.docRef = null;
+  render();
+  toast("Жагсаалт устгагдлаа");
 }
-
-async function onPlanClick(e) {
-  const b = e.target.closest("button[data-act]");
-  if (!b) return;
-  const plan = planOf(b.dataset.m), d = plan?.em[+b.dataset.i];
-  if (!plan) return;
-  switch (b.dataset.act) {
-    case "collect": return collectPlan(plan);
-    case "regen": {
-      if (plan === listPlan) return parseList(true);
-      const msg = chat[+b.dataset.m];
-      msg.plan = { loading: true }; renderChat();
-      return makePlan(msg, plan.purpose, plan.question, true);
-    }
-    case "open": return openPdf(d);
-    case "rezip": return downloadBundle(plan);
-    case "page": return chrome.tabs.create({ url: d.url });
-    case "folder": return chrome.runtime.sendMessage(plan.bundle?.id ? { type: "SHOW_FILE", id: plan.bundle.id } : { type: "SHOW_FOLDER" });
-    case "copy": return navigator.clipboard.writeText(planText(plan)).then(() => { b.textContent = "Хуулагдлаа ✓"; });
-    case "alt": d.choosing = true; d.candidates ||= await candidates({ query: d.query || d.match.title, label: d.label }).catch(() => []); break;
-    case "keep": d.choosing = false; break;
-    case "pick": if (d.candidates?.[+b.dataset.c]) await choose(d, d.candidates[+b.dataset.c]); break;
-    case "none": plan.em.splice(+b.dataset.i, 1); plan.self.push({ label: d.label, note: "Өөрөө бэлдэнэ", done: false }); break;
-  }
-  rerender(plan);
-}
-
-async function onPlanChange(e) {
-  const c = e.target.closest("input[data-act], select[data-act]");
-  if (!c) return;
-  const plan = planOf(c.dataset.m);
-  if (!plan) return;
-  if (c.dataset.act === "lang") plan.language = c.value;
-  if (c.dataset.act === "skip") plan.em[+c.dataset.i].skip = !c.checked;
-  if (c.dataset.act === "tick") plan.self[+c.dataset.i].done = c.checked;
-  if (c.dataset.act === "search") {
-    // «хайх» нэрийг өөрчилбөл каталогоос дахин хайна
-    const d = plan.em[+c.dataset.i];
-    d.query = c.value.trim();
-    d.candidates = d.query ? await candidates({ query: d.query, label: d.label }).catch(() => []) : [];
-  }
-  rerender(plan);
-}
-
-for (const el of [$("messages"), $("listPlan")]) { el.onclick = onPlanClick; el.onchange = onPlanChange; }
-$("askForm").onsubmit = e => { e.preventDefault(); ask($("question").value); };
 
 // --- Жагсаалтаар бүрдүүлэх ----------------------------------------------------
 // Байгууллагаас өгсөн жагсаалтыг (текст эсвэл зураг) AI задална → каталогтой тааруулна → «Цуглуулах» → ZIP
-$("parse").onclick = () => parseList();
-
 // fresh: «Шинээр гаргах» — ижил текстэд хадгалсан задлалтын оронд AI-аас дахин авна. Зургийн задлалтыг хадгалахгүй.
+const setListStatus = (text, cls = "muted") => { ui.listStatus = text ? { text, cls } : null; render(); };
+
 async function parseList(fresh = false) {
-  const text = $("list").value.trim(), img = $("img").files[0];
-  if (!text && !img) return listStatus("Жагсаалтаа бичих эсвэл зургаа сонгоно уу.", "warn");
-  $("parse").disabled = true;
-  listStatus(img ? "AI зургийг уншиж байна… (10–40 секунд)" : "AI жагсаалтыг задалж байна…");
+  const text = $("listText").value.trim(), img = $("listImg").files[0];
+  if (!text && !img) return setListStatus("Жагсаалтаа бичих эсвэл зургаа сонгоно уу.", "warn");
+  if (ui.parsing) return;
+  ui.parsing = true;
+  setListStatus(img ? "AI зургийг уншиж байна… (10–40 секунд)" : "AI жагсаалтыг задалж байна…");
   try {
     let p, note;
     try {
@@ -465,15 +495,17 @@ async function parseList(fresh = false) {
       p = { title: "", addressee: "", tips: [], items: localPlan(text) };
       note = "AI ажиллахгүй байсан тул түлхүүр үгээр задлав.";
     }
-    listStatus(note + " e-Mongolia-тай тааруулж байна…");
-    listPlan = { ...(await buildPlan({ ...p, title: p.title || "Бүрдүүлэх жагсаалт" })), source: "list", ...(!img && { text }) };
+    setListStatus(note + " e-Mongolia-тай тааруулж байна…");
+    listPlan = { ...(await buildPlan({ ...p, title: p.title || "Бүрдүүлэх жагсаалт" })), source: "list", at: Date.now(), ...(!img && { text }) };
+    ui.docRef = "list";
+    ui.listForm = false;
     const unsure = listPlan.em.filter(d => !d.match).length;
-    listStatus(note + (unsure ? ` ${unsure} мөрийг доороос сонгоно уу.` : ""), unsure ? "warn" : "ok");
+    ui.listStatus = { text: note + (unsure ? ` ${unsure} мөрийг доороос сонгоно уу.` : ""), cls: unsure ? "warn" : "ok" };
   } catch (e) {
-    listStatus(e.message, "err");
+    ui.listStatus = { text: e.message, cls: "err" };
   }
-  $("parse").disabled = false;
-  renderList();
+  ui.parsing = false;
+  render();
 }
 
 // Зургийг AI руу илгээхээс өмнө багасгана (сервис ~1.5MB-аас том хүсэлт хүлээж авахгүй)
@@ -487,70 +519,632 @@ async function shrinkImage(file, max = 1600) {
   return { media_type: "image/jpeg", data };
 }
 
-$("forget").onclick = async () => {
-  await chrome.storage.local.remove(["learned", "catalog", "catalogAt"]);
-  $("forget").textContent = "Мартлаа ✓";
-};
-
-// Chat-ийг энэ компьютерт хадгална (side panel хаагаад нээхэд жагсаалт, checklist алга болохгүй)
-function saveChat() {
-  chrome.storage.local.set({ chat: chat.filter(m => !m.pending) }).catch(() => {});
+function showImgName() {
+  const f = $("listImg").files[0];
+  $("imgName").textContent = f ? f.name : "эсвэл жагсаалтын зургийг сонгох";
+  $("listImg").closest(".file-pick").classList.toggle("has-file", !!f);
 }
 
-function renderChat() {
-  const keep = $("messages").scrollTop + $("messages").clientHeight >= $("messages").scrollHeight - 30; // доод хэсэгт байсан бол дагана
-  $("messages").innerHTML = chat.map((m, mi) =>
-    `<div class="msg ${m.role === "user" ? "user" : "ai"}${m.error ? " err" : ""}${m.plan ? " wide" : ""}">${esc(m.text)}` +
-    (m.links || []).map(l => `<a href="https://e-mongolia.mn${esc(l.path)}" target="_blank">→ ${esc(l.title)}</a>`).join("") +
-    (m.plan ? planHtml(m.plan, mi) : "") +
-    `</div>`).join("");
-  if (keep) $("messages").scrollTop = $("messages").scrollHeight;
-  $("chips").innerHTML = chat.length ? "" : SUGGESTIONS.map(q => `<button type="button" class="ghost">${esc(q)}</button>`).join("");
-  $("chips").querySelectorAll("button").forEach(b => (b.onclick = () => ask(b.textContent)));
-  saveChat();
-}
-
-function renderList() {
-  show("listCard", !!listPlan);
-  show("reset2", !!listPlan);
-  $("reset2").disabled = !!listPlan?.running;
-  $("listPlan").innerHTML = listPlan ? planHtml(listPlan, "list") : "";
-  $("parse").disabled = !!listPlan?.running;
-  chrome.storage.local.set({ listPlan }).catch(() => {});
-}
-
+// --- Зурах --------------------------------------------------------------------------
 function render() {
-  const snap = state?.snap, sm = state?.summary;
-  show("reset", !!snap || chat.length > 0);
-  show("summaryCard", !!sm);
-  show("chatCard", !!sm);
-  show("detailsBox", !!snap);
-  if (!snap) return;
+  const focusedId = document.activeElement?.id;
+  const top = $("scroll").scrollTop;
+  const main = !!state?.snap || plans().length > 0 || ui.tab === "documents" || ui.started;
 
-  if (sm) {
-    $("summary").innerHTML = `<div style="font-weight:600;margin-bottom:6px">${esc(sm.headline)}</div>` +
-      sm.alerts.map(a => `<div class="alert ${esc(a.level)}"><b>${esc(a.title)}</b>${esc(a.detail)}${a.action ? `<div class="small muted">→ ${esc(a.action)}</div>` : ""}</div>`).join("") +
-      (sm.changes?.length ? `<div class="small muted" style="margin-top:8px">Өмнөх сараас өөрчлөгдсөн:</div>` + sm.changes.map(c => `<div class="small">• <b>${esc(c.area)}:</b> ${esc(c.summary)}</div>`).join("") : "") +
-      (sm.ok?.length ? `<div class="small muted" style="margin-top:8px">Хэвийн:</div>` + sm.ok.map(o => `<div class="small ok">✓ ${esc(o)}</div>`).join("") : "");
-    renderChat();
-    if (!$("status").textContent) status(`Сүүлд шинжилсэн: ${sm.at.slice(0, 16).replace("T", " ")}`);
+  $("onboarding").hidden = main;
+  $("main").hidden = !main;
+  if (!main) renderOnboarding();
+  else {
+    renderTabs();
+    if (ui.tab === "overview") renderOverview(); else renderDocuments();
+    renderBadge();
+    $("askSend").disabled = ui.asking;
   }
 
-  // Дэлгэрэнгүй: эх сурвалж бүрийн төлөв (зөвхөн бүтэц) ба AI руу илгээх өгөгдөл
-  $("sources").innerHTML = `<div class="muted">Татсан: ${esc(snap.takenAt.slice(0, 16).replace("T", " "))}</div>` + SOURCES.map(s => {
-    const st = snap.status[s.id];
-    const detail = !st ? "шалгаагүй" : !st.ok ? st.error : st.note ? `мэдээлэл алга (${st.note})` : shape(snap.data[s.id]);
-    return `<div>${st?.ok ? `<span class="ok">✓</span>` : `<span class="err">✗</span>`} ${esc(s.name)} <span class="muted" style="font-size:11px">${esc(detail)}</span></div>`;
-  }).join("");
-  $("preview").textContent = JSON.stringify(aiPayload(), null, 2);
+  $("scroll").scrollTop = top;
+  if (focusedId) {
+    const el = document.getElementById(focusedId);
+    if (el && el !== document.activeElement) el.focus({ preventScroll: true });
+  }
+  save();
 }
 
-// Эхний зурагт: бүх тогтмол (DOC_STATUS, pdfs…) тодорхойлогдсоны дараа дуудна — эрт дуудвал ReferenceError гарч
-// chat, санал болгох асуултууд зурагдахгүй байсан. Хуучин хувилбарын өгөгдөл таарахгүй бол цэвэрлээд дахин зурна.
-try { render(); renderList(); }
+// Chat, жагсаалтыг энэ компьютерт хадгална (side panel хаагаад нээхэд алга болохгүй)
+function save() {
+  chrome.storage.local.set({ chat: chat.filter(m => !m.pending), listPlan, tab: ui.tab, docRef: ui.docRef }).catch(() => {});
+}
+
+// Явц, алдааны мөр. needsLogin бол «e-Mongolia нээх» товчтой.
+function notice(st, needsLogin = false) {
+  if (!st) return "";
+  const ic = { err: icon("alert", 16), warn: icon("exclaim", 16, { sw: 2.5 }), ok: icon("check", 16, { sw: 3 }) }[st.cls] || spinner(16);
+  return `<div class="notice notice--${esc(st.cls)}" role="status">${ic}<div class="notice__body"><span>${esc(st.text)}</span>${needsLogin
+    ? `<button type="button" class="btn btn--ghost" data-action="open-em">e-Mongolia нээх ${icon("external", 14)}</button>` : ""}</div></div>`;
+}
+function setNotice(el, st, needsLogin) {
+  el.hidden = !st;
+  el.innerHTML = notice(st, needsLogin);
+}
+
+function pill(cls, label) {
+  const ic = { ok: icon("check", 12, { sw: 3 }), overdue: icon("exclaim", 12, { sw: 2.5 }), attention: icon("exclaim", 12, { sw: 2.5 }), loading: spinner(12) }[cls] || "";
+  return `<span class="pill pill--${cls}">${ic}${esc(label)}</span>`;
+}
+
+function renderOnboarding() {
+  $("startBtn").disabled = ui.analyzing;
+  $("startBtn").innerHTML = ui.analyzing ? `${spinner()} Шинжилж байна…` : "Шинжилж эхлэх";
+  setNotice($("onbStatus"), ui.status, ui.needsLogin);
+}
+
+function renderTabs() {
+  const onOverview = ui.tab === "overview";
+  $("tab-overview").setAttribute("aria-selected", String(onOverview));
+  $("tab-documents").setAttribute("aria-selected", String(!onOverview));
+  $("tab-overview").tabIndex = onOverview ? 0 : -1;
+  $("tab-documents").tabIndex = onOverview ? -1 : 0;
+  $("view-overview").hidden = !onOverview;
+  $("view-documents").hidden = onOverview;
+  $("composer").hidden = !onOverview || !state?.snap;
+}
+
+function renderBadge() {
+  const p = activeDoc() && progress(activeDoc().plan);
+  const left = p ? p.total - p.ready : 0;
+  $("docBadge").hidden = left <= 0;
+  $("docBadge").textContent = String(left);
+  $("docBadge").setAttribute("aria-label", `${left} бичиг баримт дутуу`);
+}
+
+// «Тойм»: хураангуй, анхааруулга, өөрчлөлт, хэвийн зүйлс, татсан мэдээлэл, асуулт
+function renderOverview() {
+  const snap = state?.snap, sm = state?.summary;
+  if (!snap) {
+    $("view-overview").innerHTML = `
+      ${notice(ui.status, ui.needsLogin)}
+      <div class="empty-state">
+        <h2 class="section-title">Мэдээллээ шинжлээгүй байна</h2>
+        <p>e-Mongolia-д нэвтрээд «Шинжлэх» дарвал ЭМД, НДШ, зээл, бичиг баримт, хөрөнгийн мэдээллийг AI-аар хураангуйлна.</p>
+        <div class="btn-row">
+          <button type="button" class="btn btn--primary" id="analyzeBtn" data-action="analyze" ${ui.analyzing ? "disabled" : ""}>${ui.analyzing ? `${spinner()} Шинжилж байна…` : "Шинжилж эхлэх"}</button>
+          <button type="button" class="btn btn--ghost" data-action="open-em">e-Mongolia нээх ${icon("external", 14)}</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const menu = ui.menu === "overview" ? `<div class="menu" role="menu" aria-label="Тоймын үйлдэл">
+      <button type="button" role="menuitem" data-action="open-em">${icon("external", 16)} e-Mongolia нээх</button>
+      <button type="button" role="menuitem" data-action="reset" ${ui.analyzing || ui.asking ? "disabled" : ""}>${icon("trash", 16)} Дахин эхлүүлэх</button>
+    </div>` : "";
+
+  $("view-overview").innerHTML = `
+    <div class="row-between">
+      <span class="meta">Шинжилсэн <strong id="agoText">${esc(timeAgo(sm?.at || snap.takenAt))}</strong></span>
+      <div class="head-actions">
+        <button type="button" class="btn btn--ghost" id="refreshBtn" data-action="analyze" ${ui.analyzing ? "disabled" : ""}>
+          ${ui.analyzing ? `${spinner(16)} Шинжилж байна…` : `${icon("refresh", 16)} Шинэчлэх`}
+        </button>
+        <button type="button" class="icon-btn icon-btn--sm" id="ovMenuBtn" data-action="toggle-menu" data-menu="overview" aria-label="Бусад үйлдэл" aria-haspopup="menu" aria-expanded="${ui.menu === "overview"}">${icon("more", 18)}</button>
+        ${menu}
+      </div>
+    </div>
+    ${notice(ui.status, ui.needsLogin)}
+    ${sm ? summaryHtml(sm) : !ui.analyzing && !ui.status ? `<p class="empty-hint">AI хураангуй гараагүй байна. «Шинэчлэх» дарж дахин оролдоно уу.</p>` : ""}
+    ${sourcesHtml(snap)}
+    <section class="stack" aria-labelledby="chat-title">
+      <h2 id="chat-title" class="section-title">Асуулт</h2>
+      <div class="messages">${messagesHtml()}</div>
+    </section>`;
+}
+
+const LEVEL = { urgent: ["Яаралтай анхаарах", "alert"], warning: ["Анхаарах", "alert"], info: ["Мэдээлэл", "info"] };
+
+function summaryHtml(sm) {
+  const alerts = (sm.alerts || []).map((a, i) => {
+    const level = LEVEL[a.level] ? a.level : "info";
+    const [label, ic] = LEVEL[level];
+    return `
+      <section class="alert alert--${level}" aria-labelledby="alert-${i}">
+        <div class="alert__head">
+          <span class="alert__icon">${icon(ic, 20)}</span>
+          <div class="alert__text">
+            <span class="alert__label">${label}</span>
+            <h2 class="alert__title" id="alert-${i}">${esc(a.title)}</h2>
+            <p class="alert__summary">${esc(a.detail)}</p>
+            ${a.action ? `<p class="alert__action">${icon("arrow", 14)}<span>${esc(a.action)}</span></p>` : ""}
+          </div>
+        </div>
+      </section>`;
+  }).join("");
+
+  const changes = sm.changes?.length ? `
+    <section class="stack" aria-labelledby="changes-title">
+      <div class="row-between">
+        <h2 id="changes-title" class="section-title">Өмнөх сараас өөрчлөгдсөн</h2>
+        <span class="section-sub">${sm.changes.length}</span>
+      </div>
+      <ul class="list">${sm.changes.map(c => `
+        <li class="list-row list-row--top">
+          <span class="tile">${icon("activity", 18)}</span>
+          <span class="row-text"><span class="row-title">${esc(c.area)}</span><span class="row-sub">${esc(c.summary)}</span></span>
+        </li>`).join("")}</ul>
+    </section>` : "";
+
+  const ok = sm.ok?.length ? `
+    <section class="stack" aria-labelledby="ok-title">
+      <div class="row-between">
+        <h2 id="ok-title" class="section-title">Хэвийн</h2>
+        <span class="section-sub">${sm.ok.length}</span>
+      </div>
+      <ul class="list">${sm.ok.map(o => `
+        <li class="list-row">
+          <span class="tile tile--ok">${icon("check", 16, { sw: 3 })}</span>
+          <span class="row-body">${esc(o)}</span>
+        </li>`).join("")}</ul>
+    </section>` : "";
+
+  return `
+    <section class="card headline" aria-label="Хураангуй">
+      <span class="headline__label">Хураангуй</span>
+      <p class="headline__text">${esc(sm.headline)}</p>
+    </section>
+    ${alerts}${changes}${ok}`;
+}
+
+// Дэлгэрэнгүй: эх сурвалж бүрийн төлөв (зөвхөн бүтэц) ба AI руу илгээх өгөгдөл
+function sourcesHtml(snap) {
+  const okCount = SOURCES.filter(s => snap.status[s.id]?.ok).length;
+  const rows = SOURCES.map(s => {
+    const st = snap.status[s.id];
+    const [cls, label] = !st ? ["unknown", "Шалгаагүй"] : !st.ok ? ["attention", "Татагдсангүй"] : st.note ? ["unknown", "Мэдээлэл алга"] : ["ok", "Татсан"];
+    const detail = !st ? "" : !st.ok ? st.error : st.note || shape(snap.data[s.id]);
+    return `
+      <li class="list-row">
+        <span class="tile">${icon(SOURCE_ICON[s.id], 18)}</span>
+        <span class="row-text">
+          <span class="row-title">${esc(s.name)}</span>
+          ${detail ? `<span class="row-sub row-sub--code">${esc(detail)}</span>` : ""}
+        </span>
+        ${pill(cls, label)}
+      </li>`;
+  }).join("");
+  return `
+    <details class="tips sources" id="srcBox" ${ui.open.has("srcBox") ? "open" : ""}>
+      <summary>
+        <span class="tips__icon">${icon("database", 18)}</span>Татсан мэдээлэл
+        <span class="tips__meta">${okCount}/${SOURCES.length} · ${esc(timeAgo(snap.takenAt))}</span>
+        <span class="chev">${icon("chevron", 16)}</span>
+      </summary>
+      <div class="sources__body">
+        <ul class="list">${rows}</ul>
+        <details class="preview" id="aiPreview" ${ui.open.has("aiPreview") ? "open" : ""}>
+          <summary>AI руу илгээсэн зүйл (нууцалсан)</summary>
+          <pre>${esc(JSON.stringify(aiPayload(), null, 2))}</pre>
+        </details>
+      </div>
+    </details>`;
+}
+
+function messagesHtml() {
+  if (!chat.length) return `<p class="empty-hint">Асуулт асууж эсвэл зорилгоо бичээд бичиг баримтын жагсаалт гаргуулаарай. Жишээ нь: «Солонгос руу жуулчны виз мэдүүлэх бичиг баримт бүрдүүлэх».</p>`;
+  return chat.map((m, mi) => {
+    if (m.role === "user") return `<div class="bubble">${esc(m.text)}</div>`;
+    if (m.pending) return `<div class="typing" role="status">${spinner(16)} Бодож байна…</div>`;
+    const links = (m.links || []).map(l => `<a class="service-link" href="https://e-mongolia.mn${esc(l.path)}" target="_blank" rel="noopener noreferrer">${icon("external", 14)}<span>${esc(l.title)}</span></a>`).join("");
+    const p = m.plan;
+    const plan = !p ? ""
+      : p.loading || p.regenerating ? `<div class="typing" role="status">${spinner(16)} Бичиг баримтын жагсаалт гаргаж байна…</div>`
+      : p.error ? `<p class="reply__error">${esc(p.error)}</p>`
+      : listCard(p, String(mi));
+    return `<div class="reply${m.error ? " reply--error" : ""}"><p>${esc(m.text)}</p>${links ? `<div class="service-links">${links}</div>` : ""}${plan}</div>`;
+  }).join("");
+}
+
+function listCard(plan, ref) {
+  const { ready, total } = progress(plan);
+  return `
+    <button type="button" class="list-card" data-action="open-list" data-ref="${ref}">
+      <span class="tile tile--accent">${icon("clipboard", 20)}</span>
+      <span class="row-text">
+        <span class="row-title">${esc(plan.title)}</span>
+        <span class="row-sub">${total} бичиг баримт · ${ready}/${total} бэлэн</span>
+      </span>
+      <span class="list-card__open">Нээх ${icon("arrow", 16)}</span>
+    </button>`;
+}
+
+// «Бичиг баримт»: идэвхтэй жагсаалт эсвэл «Жагсаалтаар бүрдүүлэх» маягт
+function renderDocuments() {
+  const cur = activeDoc();
+  const showForm = !cur || ui.listForm;
+  $("listForm").hidden = !showForm;
+  $("listFormClose").hidden = !cur;
+  $("goAskLink").hidden = !state?.snap;
+  $("parseBtn").disabled = ui.parsing || !!listPlan?.running;
+  $("parseBtn").innerHTML = ui.parsing ? `${spinner()} Шинжилж байна…` : "Жагсаалтыг шинжлэх";
+  setNotice($("listStatus"), showForm ? ui.listStatus : null);
+  $("docsBody").innerHTML = showForm ? "" : planViewHtml(cur);
+}
+
+function planViewHtml({ ref, plan }) {
+  const all = plans();
+  const { ready, total, emDone, emNeed, selfDone, collectable } = progress(plan);
+  const pct = total ? Math.round((ready / total) * 100) : 0;
+  const hasPdf = plan.em.some(d => pdfs.has(d));
+  const busy = plan.running || plan.regenerating;
+  const at = `data-ref="${ref}"`;
+
+  const switcher = all.length > 1 ? `
+    <div class="field-row">
+      <label for="listSelect">Жагсаалт</label>
+      <select id="listSelect" data-change="switch-list">
+        ${all.map(x => `<option value="${x.ref}" ${x.ref === ref ? "selected" : ""}>${esc(x.plan.title)}</option>`).join("")}
+      </select>
+    </div>` : "";
+
+  const menu = ui.menu === "doc" ? `<div class="menu" role="menu" aria-label="Жагсаалтын үйлдэл">
+      <button type="button" role="menuitem" data-action="copy" ${at}>${icon("copy", 16)} Жагсаалт хуулах</button>
+      ${(plan.question || plan.text) && !busy ? `<button type="button" role="menuitem" data-action="regen" ${at}>${icon("refresh", 16)} Шинээр гаргах</button>` : ""}
+      <button type="button" role="menuitem" data-action="new-list">${icon("plus", 16)} Өөр жагсаалт оруулах</button>
+      ${!busy ? `<button type="button" role="menuitem" data-action="delete-list" ${at}>${icon("trash", 16)} Жагсаалт устгах</button>` : ""}
+    </div>` : "";
+
+  const status = [
+    ref === "list" ? notice(ui.listStatus) : "",
+    plan.regenerating ? notice({ text: "Жагсаалтыг AI-аар шинээр гаргаж байна…", cls: "muted" }) : "",
+    plan.running ? notice({ text: "Цуглуулж байна… Дуустал e-Mongolia табыг битгий хаагаарай.", cls: "muted" }) : "",
+  ].join("");
+
+  const lang = plan.em.some(isForeign) ? `
+    <div class="field-row">
+      <label for="lang-${ref}" class="row-text">
+        <span class="row-title">Гадаад хэлээр лавлагааны хэл</span>
+        <span class="row-sub">e-Mongolia-д байхгүй бол англи</span>
+      </label>
+      <select id="lang-${ref}" data-change="lang" ${at} ${plan.running ? "disabled" : ""}>
+        ${LANGUAGES.map(l => `<option value="${l}" ${l === (plan.language || "англи") ? "selected" : ""}>${l[0].toUpperCase() + l.slice(1)}</option>`).join("")}
+      </select>
+    </div>` : "";
+
+  const mainBtn = plan.running
+    ? `<button type="button" class="btn btn--primary btn--block" disabled>${spinner()} Цуглуулж байна…</button>`
+    : collectable
+      ? `<button type="button" class="btn btn--primary btn--block" id="collectBtn" data-action="collect" ${at} ${plan.regenerating ? "disabled" : ""}>${icon("download", 18)} Цуглуулж ZIP-ээр татах (${collectable})</button>`
+      : hasPdf && !plan.bundle
+        ? `<button type="button" class="btn btn--primary btn--block" data-action="rezip" ${at}>${icon("download", 18)} ZIP дахин татах</button>`
+        : "";
+
+  const bundle = plan.bundle ? `
+    <div class="card bundle-card">
+      <div class="bundle">
+        <span class="tile tile--ok">${icon("package", 20)}</span>
+        <span class="row-text">
+          <span class="row-title">${esc(plan.bundle.name)}</span>
+          <span class="row-sub">${plan.bundle.count} PDF + Жагсаалт.txt · Downloads/Burduulelt</span>
+        </span>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn--ghost" data-action="folder" ${at}>${icon("folder", 16)} Хавтас нээх</button>
+        ${hasPdf && !plan.running ? `<button type="button" class="btn btn--ghost" data-action="rezip" ${at}>${icon("download", 16)} Багцыг дахин татах</button>` : ""}
+      </div>
+    </div>` : "";
+
+  const autoSection = plan.em.length ? `
+    <section class="stack" aria-labelledby="auto-title">
+      <div class="row-between">
+        <div class="row-text">
+          <h2 id="auto-title" class="section-title">e-Mongolia-оос автоматаар</h2>
+          <span class="row-sub">PDF-ээр татаж нэг ZIP файл болгоно</span>
+        </div>
+        <span class="section-sub progress__count">${emDone} / ${emNeed}</span>
+      </div>
+      ${lang}
+      <ul class="list">${plan.em.map((d, i) => docRow(plan, d, i, ref)).join("")}</ul>
+      ${mainBtn}
+      ${plan.bundleError ? notice({ text: plan.bundleError, cls: "err" }) : ""}
+      ${bundle}
+    </section>` : "";
+
+  const selfSection = plan.self.length ? `
+    <section class="stack" aria-labelledby="self-title">
+      <div class="row-between">
+        <h2 id="self-title" class="section-title">Өөрөө бэлдэх</h2>
+        <span class="section-sub progress__count">${selfDone} / ${plan.self.length}</span>
+      </div>
+      <ul class="list">${plan.self.map((x, i) => `
+        <li>
+          <label class="check-row ${x.done ? "is-done" : ""}" for="self-${ref}-${i}">
+            <input type="checkbox" id="self-${ref}-${i}" data-change="tick" ${at} data-i="${i}" ${x.done ? "checked" : ""}>
+            <span class="row-text">
+              <span class="row-title">${esc(x.label)}</span>
+              ${x.note ? `<span class="row-sub">${esc(x.note)}</span>` : ""}
+            </span>
+          </label>
+        </li>`).join("")}</ul>
+    </section>` : "";
+
+  const tips = plan.tips?.length ? `
+    <details class="tips" id="tips" ${ui.open.has("tips") ? "open" : ""}>
+      <summary><span class="bulb">${icon("bulb", 18)}</span>Зөвлөмж</summary>
+      <ul class="tips__list">${plan.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+    </details>` : "";
+
+  return `
+    ${switcher}
+    <div class="doc-head">
+      <div class="row-text">
+        <h1>${esc(plan.title)}</h1>
+        <span class="row-sub">${plan.addressee ? `Хаана өгөх: ${esc(plan.addressee)}` : plan.source === "list" ? "Байгууллагын жагсаалтаас" : "Зорилгоос гаргасан"}</span>
+      </div>
+      <button type="button" class="icon-btn" id="menuBtn" data-action="toggle-menu" data-menu="doc" aria-label="Бусад үйлдэл" aria-haspopup="menu" aria-expanded="${ui.menu === "doc"}">${icon("more", 18)}</button>
+      ${menu}
+    </div>
+    ${status}
+    <div class="card progress">
+      <div class="row-between">
+        <span class="row-title">Бэлэн</span>
+        <span class="progress__count"><strong>${ready}</strong> / ${total}</span>
+      </div>
+      <div class="track" role="progressbar" aria-label="Бэлэн бичиг баримт" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${ready}">
+        <div class="track__fill" style="width: ${pct}%"></div>
+      </div>
+      ${total > 0 && ready === total ? `<span class="done-note">Бүгд бэлэн. Мэдүүлэхэд бэлэн боллоо.</span>` : ""}
+    </div>
+    ${autoSection}
+    ${selfSection}
+    ${tips}
+    <p class="disclaimer">${icon("info", 16)}<span>Шаардлага байгууллага бүрт өөр байж болно. Хүлээн авах байгууллагаас (банк, элчин сайдын яам, ажил олгогч, сургууль…) заавал шалгана уу.</span></p>`;
+}
+
+// Нэг бичиг баримтын мөр. Тааруулалт эргэлзээтэй (match алга) эсвэл хэрэглэгч «Солих» дарсан бол сонголтуудыг харуулна.
+function docRow(plan, d, i, ref) {
+  const at = `data-ref="${ref}" data-i="${i}"`;
+  const lock = plan.running || plan.regenerating || d.state === "done";
+  const choices = (!d.match || d.choosing) && !plan.running ? `
+    <div class="choose">
+      ${d.candidates?.length ? "" : `<span class="row-sub">Олдсонгүй — өөр үгээр хайна уу</span>`}
+      ${(d.candidates || []).map((c, k) => `<button type="button" class="choose__opt" data-action="pick" ${at} data-c="${k}">${esc(c.title)}</button>`).join("")}
+      <label class="choose__search">
+        ${icon("search", 16)}
+        <span class="sr-only">Өөр үгээр хайх</span>
+        <input type="text" id="search-${ref}-${i}" data-change="search" ${at} value="${esc(d.query || "")}" placeholder="Өөр үгээр хайх (Enter)">
+      </label>
+      <div class="choose__foot">
+        <button type="button" class="swap swap--muted" data-action="none" ${at}>Аль нь ч биш — өөрөө бэлдэнэ</button>
+        ${d.match ? `<button type="button" class="swap swap--muted" data-action="keep" ${at}>Болих</button>` : ""}
+      </div>
+    </div>` : "";
+
+  if (!d.match) return `
+    <li class="doc-row">
+      <div class="list-row list-row--top">
+        <span class="tile tile--warn">${icon("search", 18)}</span>
+        <span class="row-text">
+          <span class="row-title">${esc(d.label)}</span>
+          <span class="row-sub">e-Mongolia-д аль нь вэ? Сонголтыг тань санана.</span>
+        </span>
+        ${pill("attention", "Сонгох")}
+      </div>
+      ${choices}
+    </li>`;
+
+  const [cls, label, note] = DOC_STATUS[d.state] || ["overdue", "Алдаа", d.state];
+  const noteText = [note, d.detail && `(${d.detail})`].filter(Boolean).join(" ");
+  const noteCls = { overdue: "err", attention: "warn" }[cls] || "muted";
+  const y = new Date().getFullYear();
+  const meta = [
+    d.years ? esc(`${y - d.years}–${y}`) : "",
+    plan.source === "list" && norm(d.label) !== norm(d.match.title) ? esc(`← ${d.label}`) : "",
+    d.state === "done" && pdfs.has(d) ? `<button type="button" class="swap" data-action="open" ${at}>Нээх</button>` : "",
+    d.url && d.state !== "done" ? `<button type="button" class="swap" data-action="page" ${at}>Хуудсыг нээх</button>` : "",
+    !lock && !d.choosing ? `<button type="button" class="swap" data-action="alt" ${at} aria-label="${esc(d.match.title)} — өөрөөр солих">Солих</button>` : "",
+  ].filter(Boolean);
+
+  return `
+    <li class="doc-row${d.skip ? " is-skipped" : ""}">
+      <div class="check-row">
+        <input type="checkbox" id="em-${ref}-${i}" data-change="skip" ${at} ${d.skip ? "" : "checked"} ${lock ? "disabled" : ""}>
+        <span class="row-text">
+          <label class="row-title" for="em-${ref}-${i}">${esc(d.match.title)}</label>
+          ${meta.length ? `<span class="meta-line">${meta.join(" · ")}</span>` : ""}
+          ${noteText ? `<span class="doc-note doc-note--${noteCls}">${esc(noteText)}</span>` : ""}
+          ${d.replaced ? `<span class="row-sub">«${esc(d.replaced)}» бүртгэлгүй тул орлуулав</span>` : ""}
+        </span>
+        ${pill(cls, label)}
+      </div>
+      ${choices}
+    </li>`;
+}
+
+// --- Үйлдлүүд -------------------------------------------------------------------------
+let toastTimer;
+function toast(message) {
+  $("toast").textContent = message;
+  $("toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $("toast").hidden = true; }, 2800);
+}
+
+function scrollToBottom() {
+  $("scroll").scrollTop = $("scroll").scrollHeight;
+}
+
+function setTab(tab) {
+  ui.tab = tab;
+  ui.menu = null;
+  render();
+  $("scroll").scrollTop = 0;
+}
+
+async function copyPlan(plan) {
+  try {
+    await navigator.clipboard.writeText(planText(plan));
+    toast("Жагсаалт хуулагдлаа");
+  } catch {
+    toast("Хуулж чадсангүй");
+  }
+}
+
+async function clearData() {
+  if (!confirm("Хураангуй, асуулт хариулт, жагсаалт, сар бүрийн агшин, санасан сонголтууд бүгд энэ компьютерээс устна. Үргэлжлүүлэх үү?")) return;
+  await chrome.storage.local.clear();
+  state = null;
+  chat = [];
+  listPlan = null;
+  Object.assign(ui, { tab: "overview", docRef: null, status: null, needsLogin: false, listStatus: null, listForm: false, started: false, menu: null });
+  ui.open.clear();
+  $("listText").value = "";
+  $("listImg").value = "";
+  showImgName();
+  $("askInput").value = "";
+  $("privacyDialog").close();
+  render();
+  toast("Хадгалсан мэдээлэл устгагдлаа");
+}
+
+// Бүтнээр нь дахин зурахгүйгээр цэсийг хаана (дарсан checkbox, select-ийн change алга болохгүй)
+function closeMenu() {
+  ui.menu = null;
+  document.querySelectorAll(".menu").forEach(m => m.remove());
+  document.querySelectorAll('[data-action="toggle-menu"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+
+async function onClick(e) {
+  const b = e.target.closest("[data-action]");
+  // Цэсний гадна эсвэл цэсний мөрийг дарахад цэс хаагдана
+  if (ui.menu && b?.dataset.action !== "toggle-menu" && (b || !e.target.closest(".menu"))) closeMenu();
+  if (!b || b.disabled) return;
+
+  const { action, ref } = b.dataset;
+  const plan = ref != null ? planOf(ref) : null;
+  const d = plan?.em?.[+b.dataset.i];
+  switch (action) {
+    case "analyze": return runAnalyze();
+    case "open-em": return chrome.tabs.create({ url: EM_HOME });
+    case "tab": return setTab(b.dataset.tab);
+    case "toggle-menu": ui.menu = ui.menu === b.dataset.menu ? null : b.dataset.menu; return render();
+    case "reset": return resetInfo();
+    case "suggest": return ask(b.dataset.q);
+    case "go-list":
+      ui.started = true;
+      setTab("documents");
+      return $("listText").focus();
+    case "go-ask":
+      setTab("overview");
+      scrollToBottom();
+      return $("askInput").focus();
+    case "open-list":
+      ui.docRef = ref;
+      ui.listForm = false;
+      return setTab("documents");
+    case "new-list":
+      ui.listForm = true;
+      ui.listStatus = null;
+      render();
+      $("scroll").scrollTop = 0;
+      return $("listText").focus();
+    case "close-list-form": ui.listForm = false; return render();
+    case "parse": return parseList();
+    case "forget":
+      await chrome.storage.local.remove(["learned", "catalog", "catalogAt"]);
+      return toast("Сонголтууд мартагдлаа. Үйлчилгээний жагсаалт дахин татагдана.");
+    case "open-privacy": return $("privacyDialog").showModal();
+    case "close-privacy": return $("privacyDialog").close();
+    case "clear-data": return clearData();
+  }
+  if (!plan) return;
+  switch (action) {
+    case "copy": return copyPlan(plan);
+    case "regen": return regenerate(ref);
+    case "delete-list": return deleteList(ref);
+    case "collect": return collectPlan(plan);
+    case "rezip": return downloadBundle(plan).catch(err => { plan.bundleError = "Багц үүсгэж чадсангүй: " + err.message; render(); });
+    case "folder": return chrome.runtime.sendMessage(plan.bundle?.id ? { type: "SHOW_FILE", id: plan.bundle.id } : { type: "SHOW_FOLDER" });
+    case "open": return openPdf(d);
+    case "page": return chrome.tabs.create({ url: d.url });
+    case "alt": d.choosing = true; d.candidates ||= await candidates({ query: d.query || d.match.title, label: d.label }).catch(() => []); break;
+    case "keep": d.choosing = false; break;
+    case "pick": if (d.candidates?.[+b.dataset.c]) await choose(d, d.candidates[+b.dataset.c]); break;
+    case "none": plan.em.splice(+b.dataset.i, 1); plan.self.push({ label: d.label, note: "Өөрөө бэлдэнэ", done: false }); break;
+    default: return;
+  }
+  render();
+}
+
+async function onChange(e) {
+  const c = e.target.closest("[data-change]");
+  if (!c) return;
+  if (c.dataset.change === "switch-list") { ui.docRef = c.value; return render(); }
+  const plan = planOf(c.dataset.ref);
+  if (!plan) return;
+  const i = +c.dataset.i;
+  switch (c.dataset.change) {
+    case "lang": plan.language = c.value; break;
+    case "skip": plan.em[i].skip = !c.checked; break;
+    case "tick": plan.self[i].done = c.checked; break;
+    case "search": {
+      // «хайх» нэрийг өөрчилбөл каталогоос дахин хайна
+      const d = plan.em[i];
+      d.query = c.value.trim();
+      d.candidates = d.query ? await candidates({ query: d.query, label: d.label }).catch(() => []) : [];
+      break;
+    }
+  }
+  render();
+}
+
+document.addEventListener("click", onClick);
+document.addEventListener("change", onChange);
+// Хайх талбарт бичиж байх үед дахин зурагдвал бичсэн нь арилахгүй
+document.addEventListener("input", e => {
+  const c = e.target.closest('[data-change="search"]');
+  const d = c && planOf(c.dataset.ref)?.em?.[+c.dataset.i];
+  if (d) d.query = c.value;
+});
+// <details> нээгдсэн эсэхийг дахин зурахад хадгална
+document.addEventListener("toggle", e => {
+  if (!e.target.id) return;
+  if (e.target.open) ui.open.add(e.target.id); else ui.open.delete(e.target.id);
+}, true);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && ui.menu) {
+    const btn = ui.menu === "doc" ? "menuBtn" : "ovMenuBtn";
+    closeMenu();
+    $(btn)?.focus();
+  }
+});
+// Таб хооронд сумаар шилжих
+document.querySelector(".tabs").addEventListener("keydown", e => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  e.preventDefault();
+  const next = ui.tab === "overview" ? "documents" : "overview";
+  setTab(next);
+  $(next === "overview" ? "tab-overview" : "tab-documents").focus();
+});
+$("askForm").onsubmit = e => { e.preventDefault(); ask($("askInput").value); };
+$("listImg").onchange = showImgName;
+
+// --- Эхлэл ----------------------------------------------------------------------------
+document.querySelectorAll("[data-icon]").forEach(el => { el.innerHTML = icon(el.dataset.icon, +el.dataset.size || 18); });
+$("fetchList").innerHTML = FETCH_ITEMS.map(([ic, label]) => `<li class="list-row"><span class="tile">${icon(ic, 18)}</span><span>${esc(label)}</span></li>`).join("");
+document.querySelectorAll("[data-privacy-points]").forEach(ul => {
+  const points = ul.dataset.privacyPoints === "short" ? PRIVACY_POINTS.slice(0, 3) : PRIVACY_POINTS;
+  ul.innerHTML = points.map(p => `<li>${esc(p)}</li>`).join("");
+});
+$("chips").innerHTML = SUGGESTIONS.map(([label, q]) => `<button type="button" class="chip" data-action="suggest" data-q="${esc(q)}" title="${esc(q)}">${esc(label)}</button>`).join("");
+$("listText").value = listPlan?.text || "";
+
+// Хуучин хувилбарын өгөгдөл таарахгүй бол цэвэрлээд дахин зурна
+try { render(); }
 catch (e) {
   console.error(e);
   chat = []; listPlan = null;
   await chrome.storage.local.remove(["chat", "listPlan"]);
-  render(); renderList();
+  render();
 }
+
+setInterval(() => {
+  const el = $("agoText");
+  if (el && state?.snap) el.textContent = timeAgo(state.summary?.at || state.snap.takenAt);
+}, 60_000);

@@ -1,117 +1,144 @@
 <!doctype html>
 <html lang="mn">
 <head>
-<meta charset="utf-8">
-<title>Миний мэдээлэл AI</title>
-<style>
-  :root { --bg:#0f1726; --card:#1b2638; --line:#2c3a52; --text:#e8eef8; --muted:#93a3bd; --accent:#2eb87a; --accent2:#4f8cff; --ok:#3ecf8e; --warn:#f5b84a; --err:#ff6b6b; }
-  * { box-sizing:border-box; }
-  body { margin:0; padding:16px; background:var(--bg); color:var(--text); font:14px/1.45 system-ui, sans-serif; }
-  h1 { font-size:17px; margin:0 0 4px; }
-  .sub { color:var(--muted); font-size:12px; margin-bottom:12px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px; }
-  .step { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; }
-  button { background:var(--accent2); color:#fff; border:0; border-radius:8px; padding:8px 12px; font:inherit; cursor:pointer; }
-  button.ghost { background:transparent; border:1px solid var(--line); color:var(--text); }
-  button:disabled { opacity:.5; cursor:default; }
-  button.primary { width:100%; padding:12px; font-size:16px; font-weight:600; background:var(--accent); }
-  .tabs { display:flex; gap:4px; margin-bottom:12px; border-bottom:1px solid var(--line); }
-  .tabs button { flex:1; background:transparent; color:var(--muted); border-radius:8px 8px 0 0; border-bottom:2px solid transparent; }
-  .tabs button.active { color:var(--text); border-bottom-color:var(--accent); font-weight:600; }
-  .small { font-size:12px; }
-  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)} .muted{color:var(--muted)}
-  .hidden { display:none; }
-  .alert { border-left:3px solid var(--line); padding:6px 10px; margin:8px 0; border-radius:4px; background:#0b1220; }
-  .alert.urgent { border-color:var(--err); } .alert.warning { border-color:var(--warn); } .alert.info { border-color:var(--accent2); }
-  .alert b { display:block; }
-  #messages { display:flex; flex-direction:column; gap:8px; max-height:520px; overflow-y:auto; margin-bottom:8px; }
-  .msg { padding:8px 10px; border-radius:10px; max-width:92%; white-space:pre-wrap; }
-  .msg.user { align-self:flex-end; background:var(--accent2); color:#fff; }
-  .msg.ai { align-self:flex-start; background:#0b1220; border:1px solid var(--line); }
-  .msg.ai a { color:#8fb6ff; display:block; margin-top:4px; font-size:12px; }
-  .msg.wide { max-width:100%; white-space:normal; }
-  .plan .doc { font-size:13px; margin:4px 0; display:block; cursor:pointer; }
-  .plan .doc input { margin:0 6px 0 0; vertical-align:middle; }
-  .plan .row { display:flex; flex-wrap:wrap; gap:6px; }
-  .plan .bundle { margin-top:8px; padding:8px; border:1px solid var(--accent); border-radius:8px; background:rgba(46,184,122,.08); }
-  .plan .choose { margin:4px 0 8px 20px; display:flex; flex-direction:column; gap:4px; }
-  .plan .choose button { text-align:left; font-size:12px; padding:5px 8px; }
-  .plan select { background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:2px 4px; font:inherit; }
-  .plan .choose input { background:transparent; color:inherit; border:0; border-bottom:1px dashed var(--line); font:inherit; font-size:12px; padding:3px 0; }
-  button.mini { font-size:11px; padding:3px 8px; margin-left:4px; }
-  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
-  .chips button { font-size:12px; padding:5px 9px; }
-  .ask { display:flex; gap:8px; }
-  .ask input { flex:1; background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; }
-  textarea { width:100%; min-height:110px; background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; resize:vertical; margin:8px 0; }
-  pre { white-space:pre-wrap; word-break:break-word; font-size:11px; background:#0b1220; padding:8px; border-radius:8px; max-height:240px; overflow:auto; }
-  details summary { cursor:pointer; color:var(--muted); font-size:12px; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Миний мэдээлэл AI</title>
+  <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <h1>Миний мэдээлэл AI</h1>
-  <div class="sub">e-Mongolia-д ДАН-аар өөрөө нэвтэрнэ. Нууц үг extension-д орохгүй.</div>
 
-  <div class="tabs">
-    <button data-tab="info">Миний мэдээлэл</button>
-    <button data-tab="list">Жагсаалтаар бүрдүүлэх</button>
-  </div>
+  <!-- 1. Анх нээхэд (шинжлээгүй, жагсаалт алга) -->
+  <div class="screen" id="onboarding" hidden>
+    <div class="scroll">
+      <div class="hero">
+        <div class="wrap">
+          <div class="intro">
+            <span class="app-mark" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-7"/></svg>
+            </span>
+            <h1>Миний мэдээлэл AI</h1>
+            <p>e-Mongolia дээрх мэдээллээ AI-аар хураангуйлж, бичиг баримтаа нэг ZIP багц болгон бүрдүүл.</p>
+          </div>
+        </div>
+      </div>
+      <div class="wrap onboarding">
 
-  <div id="tab-info">
-    <div class="small muted" style="margin-bottom:10px">«Шинжлэх» дарахад ЭМД, НДШ, зээл, бичиг баримт, хөрөнгийн мэдээллийг татаж AI-аар хураангуйлна. Дараа нь асуулт асууж, зорилгоо бичээд бичиг баримтаа бүрдүүлнэ.</div>
-    <div class="card">
-      <button id="analyze" class="primary">Шинжлэх</button>
-      <div id="status" class="small muted" style="margin-top:8px"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <button id="openEm" class="ghost small hidden">e-Mongolia нээх</button>
-        <button id="reset" class="ghost small hidden">↺ Дахин эхлүүлэх</button>
+        <section class="stack" aria-labelledby="fetch-title">
+          <h2 id="fetch-title" class="section-title">Шинжлэхэд татах мэдээлэл</h2>
+          <ul class="list" id="fetchList"></ul>
+        </section>
+
+        <section class="stack" aria-labelledby="list-path-title">
+          <h2 id="list-path-title" class="section-title">Байгууллагаас жагсаалт өгсөн үү?</h2>
+          <button type="button" class="list-card" data-action="go-list">
+            <span class="tile tile--accent" data-icon="clipboard" data-size="20"></span>
+            <span class="row-text">
+              <span class="row-title">Жагсаалтаар бүрдүүлэх</span>
+              <span class="row-sub">Банк, сургууль, элчин сайдын яамны жагсаалтаас лавлагаануудыг татна. Шинжлэх шаардлагагүй.</span>
+            </span>
+            <span class="list-card__open"><span data-icon="arrow" data-size="16"></span></span>
+          </button>
+        </section>
+
+        <section class="privacy-card" aria-labelledby="privacy-title">
+          <div class="privacy-card__head">
+            <span class="icon-ok" data-icon="lock"></span>
+            <h2 id="privacy-title" class="section-title">Нууцлал</h2>
+          </div>
+          <ul class="privacy-points" data-privacy-points="short"></ul>
+          <button type="button" class="link-button" data-action="open-privacy">Дэлгэрэнгүй унших</button>
+        </section>
       </div>
     </div>
-
-    <div id="summaryCard" class="card hidden">
-      <div class="step">Хураангуй</div>
-      <div id="summary"></div>
-    </div>
-
-    <div id="chatCard" class="card hidden">
-      <div class="step">Асуулт асуух</div>
-      <div id="messages"></div>
-      <div id="chips" class="chips"></div>
-      <form id="askForm" class="ask">
-        <input id="question" placeholder="Жишээ нь: Миний НДШ хэдэн сар төлөгдсөн бэ?" maxlength="500" autocomplete="off">
-        <button id="send">Илгээх</button>
-      </form>
-    </div>
-
-    <details id="detailsBox" class="hidden">
-      <summary>Дэлгэрэнгүй: татсан мэдээлэл, AI руу илгээсэн зүйл</summary>
-      <div id="sources" class="small" style="margin-top:6px"></div>
-      <pre id="preview"></pre>
-    </details>
+    <footer class="footer">
+      <div class="wrap footer__inner">
+        <div id="onbStatus" hidden></div>
+        <button type="button" class="btn btn--primary btn--lg" data-action="analyze" id="startBtn">Шинжилж эхлэх</button>
+        <p class="footnote">Эхлээд e-Mongolia-д ДАН-аар нэвтэрсэн байх шаардлагатай ·
+          <button type="button" class="link-inline" data-action="open-em">e-Mongolia нээх</button></p>
+      </div>
+    </footer>
   </div>
 
-  <div id="tab-list" class="hidden">
-    <div class="card">
-      <div class="step">Бүрдүүлэх жагсаалт</div>
-      <div class="small muted">Банк, сургууль, ажил олгогч, элчин сайдын яамнаас өгсөн жагсаалтаа буулгах эсвэл зургийг нь оруулна. e-Mongolia-оос авах лавлагаануудыг олж, нэг ZIP багц болгон татна.</div>
-      <textarea id="list" maxlength="5000" placeholder="Жишээ:
+  <!-- 2. Үндсэн дэлгэц: Тойм (хураангуй + асуулт) ба Бичиг баримт (жагсаалт, цуглуулах) -->
+  <div class="screen" id="main" hidden>
+    <header class="topbar">
+      <div class="wrap">
+        <div class="tabs" role="tablist" aria-label="Хэсгүүд">
+          <button type="button" role="tab" class="tab" id="tab-overview" aria-controls="view-overview" aria-selected="true" data-action="tab" data-tab="overview">Тойм</button>
+          <button type="button" role="tab" class="tab" id="tab-documents" aria-controls="view-documents" aria-selected="false" tabindex="-1" data-action="tab" data-tab="documents">
+            Бичиг баримт <span class="tab__badge" id="docBadge" hidden></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="scroll" id="scroll">
+      <div class="wrap">
+        <section id="view-overview" role="tabpanel" aria-labelledby="tab-overview" class="view"></section>
+        <section id="view-documents" role="tabpanel" aria-labelledby="tab-documents" class="view" hidden>
+          <div id="docsBody" class="view-part"></div>
+
+          <!-- Жагсаалтаар бүрдүүлэх: дахин зурагдахгүй (бичсэн текст, сонгосон зураг хадгалагдана) -->
+          <section class="card list-form" id="listForm" hidden aria-labelledby="list-form-title">
+            <div class="row-between">
+              <h2 id="list-form-title" class="section-title">Жагсаалтаар бүрдүүлэх</h2>
+              <button type="button" class="link-button" id="listFormClose" data-action="close-list-form" hidden>Болих</button>
+            </div>
+            <p class="section-sub">Банк, сургууль, ажил олгогч, элчин сайдын яамнаас өгсөн жагсаалтаа буулгах эсвэл зургийг нь оруулна. e-Mongolia-оос авах лавлагаануудыг олж, нэг ZIP багц болгон татна.</p>
+            <label for="listText" class="sr-only">Бүрдүүлэх жагсаалт</label>
+            <textarea id="listText" class="textarea" maxlength="5000" placeholder="Жишээ:
 1. Иргэний үнэмлэхний хуулбар
 2. Нийгмийн даатгалын лавлагаа
 3. Ял шийтгэлгүй тодорхойлолт
 4. Цээж зураг 3x4"></textarea>
-      <label class="small muted">эсвэл зураг: <input type="file" id="img" accept="image/png, image/jpeg, image/webp"></label>
-      <button id="parse" class="primary" style="margin-top:10px">Жагсаалтыг шинжлэх</button>
-      <div id="listStatus" class="small muted" style="margin-top:8px"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <button id="openEm2" class="ghost small">e-Mongolia нээх</button>
-        <button id="reset2" class="ghost small hidden">↺ Дахин эхлүүлэх</button>
+            <label class="file-pick">
+              <span data-icon="image" data-size="18"></span>
+              <span class="file-pick__text" id="imgName">эсвэл жагсаалтын зургийг сонгох</span>
+              <input type="file" id="listImg" accept="image/png, image/jpeg, image/webp">
+            </label>
+            <button type="button" class="btn btn--primary btn--block" id="parseBtn" data-action="parse">Жагсаалтыг шинжлэх</button>
+            <div id="listStatus" hidden></div>
+            <button type="button" class="link-button" id="goAskLink" data-action="go-ask" hidden>Эсвэл «Тойм» хэсэгт зорилгоо бичээд жагсаалт гаргуулах</button>
+          </section>
+
+          <button type="button" class="link-button forget" id="forgetBtn" data-action="forget">Сонголтуудыг мартах, үйлчилгээний жагсаалт шинэчлэх</button>
+        </section>
       </div>
-    </div>
+    </main>
 
-    <div id="listCard" class="card hidden"><div id="listPlan"></div></div>
-
-    <button id="forget" class="ghost small">Сонголтуудыг мартах, үйлчилгээний жагсаалт шинэчлэх</button>
+    <footer class="footer composer" id="composer">
+      <div class="wrap footer__inner">
+        <div class="chips" id="chips" role="group" aria-label="Санал болгох асуултууд"></div>
+        <form class="ask" id="askForm" autocomplete="off">
+          <label for="askInput" class="sr-only">Асуулт эсвэл зорилго</label>
+          <input id="askInput" type="text" placeholder="Асуулт эсвэл зорилгоо бичих…" maxlength="500">
+          <button type="submit" class="ask__send" aria-label="Илгээх" id="askSend">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          </button>
+        </form>
+        <button type="button" class="privacy-link" data-action="open-privacy">
+          <span data-icon="lock" data-size="14"></span>
+          Нууц үг хадгалахгүй · Мэдээлэл хэрхэн ашиглагдах вэ?
+        </button>
+      </div>
+    </footer>
   </div>
+
+  <!-- Нууцлалын цонх -->
+  <dialog class="sheet" id="privacyDialog" aria-labelledby="privacyDialogTitle">
+    <div class="sheet__head">
+      <h2 id="privacyDialogTitle">Нууцлал</h2>
+      <button type="button" class="icon-btn" data-action="close-privacy" aria-label="Хаах">
+        <span data-icon="close"></span>
+      </button>
+    </div>
+    <ul class="privacy-points" data-privacy-points></ul>
+    <button type="button" class="btn btn--danger-outline" data-action="clear-data">Хадгалсан мэдээллээ устгах</button>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <script type="module" src="sidepanel.js"></script>
 </body>
